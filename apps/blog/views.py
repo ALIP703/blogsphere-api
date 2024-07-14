@@ -19,19 +19,19 @@ def getAllBlogs(request):
         serializer = BlogSerializer(posts, many=True)
         response = {
             "data": serializer.data,
-            "message": "successfully retrieved all blogs",
-            "status": 200,
+            "message": "Successfully retrieved all blogs",
+            "status": status.HTTP_200_OK,
         }
 
     except Exception as e:
         response = {
             "data": [],
             "message": f"An error occurred: {str(e)}",
-            "status": 500,
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
 
     # Return the JSON response with posts and their associated data
-    return Response(response)
+    return Response(response, status=response["status"])
 
 
 @api_view(["POST"])
@@ -40,7 +40,7 @@ def createBlog(request):
         if not request.user.is_authenticated:
             return Response(
                 {
-                    "status": 403,
+                    "status": status.HTTP_403_FORBIDDEN,
                     "message": "You are not allowed to access this resource.",
                     "data": [],
                 }
@@ -54,16 +54,16 @@ def createBlog(request):
             serializer.save()
         response = {
             "data": serializer.data,
-            "message": "successfully created blog",
-            "status": 500,
+            "message": "Successfully created blog",
+            "status": status.HTTP_200_OK,
         }
     except Exception as e:
         response = {
             "data": [],
             "message": f"An error occurred: {str(e)}",
-            "status": 500,
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
-    return Response(response)
+    return Response(response, status=response["status"])
 
 
 @api_view(["GET"])
@@ -89,18 +89,18 @@ def getABlog(request, pk):
         # Create the response dictionary
         response = {
             "data": post_data,
-            "message": "successfully retrieved A blog post",
-            "status": 200,
+            "message": "Successfully retrieved A blog post",
+            "status": status.HTTP_200_OK,
         }
 
     except Exception as e:
         response = {
             "data": None,
             "message": f"An error occurred: {str(e)}",
-            "status": 500,
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
 
-    return Response(response)
+    return Response(response, status=response["status"])
 
 
 @api_view(["GET"])
@@ -112,7 +112,7 @@ def getAllCommentsByPostId(request, pk):
             response = {
                 "data": None,
                 "message": "No comments found for this post.",
-                "status": 200,
+                "status": status.HTTP_404_NOT_FOUND,
             }
             return Response(response)
 
@@ -131,16 +131,16 @@ def getAllCommentsByPostId(request, pk):
         response = {
             "data": serializer.data,
             "message": "Successfully retrieved the comments",
-            "status": 200,
+            "status": status.HTTP_200_OK,
         }
     except Exception as e:
         response = {
             "data": None,
             "message": f"An error occurred: {str(e)}",
-            "status": 500,
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
 
-    return Response(response)
+    return Response(response, status=response["status"])
 
 
 @api_view(["GET"])
@@ -151,7 +151,7 @@ def getAllReplyByCommentId(request, pk):
             response = {
                 "data": None,
                 "message": "No reply found for this comment.",
-                "status": 200,
+                "status": status.HTTP_404_NOT_FOUND,
             }
             return Response(response)
 
@@ -170,16 +170,16 @@ def getAllReplyByCommentId(request, pk):
         response = {
             "data": serializer.data,
             "message": "Successfully retrieved the reply comments",
-            "status": 200,
+            "status": status.HTTP_200_OK,
         }
     except Exception as e:
         response = {
             "data": None,
             "message": f"An error occurred: {str(e)}",
-            "status": 500,
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
 
-    return Response(response)
+    return Response(response, status=response["status"])
 
 
 @api_view(["GET"])
