@@ -10,4 +10,5 @@ urlpatterns = [
     path("comment/<int:pk>/reply", views.getAllReplyByCommentId),
     path("blog/<int:pk>/like", views.likeAPost),
     path("comment/<int:pk>/like", views.likeAComment),
+    path("blog/<int:pk>/create-comment", views.createComment),
 ]

@@ -260,3 +260,55 @@ def likeAComment(request, pk):
         }
 
     return Response(response, status=response["status"])
+
+
+@api_view(["POST"])
+def createComment(request, pk):
+    try:
+        if not request.user.is_authenticated:
+            return Response(
+                {
+                    "status": status.HTTP_403_FORBIDDEN,
+                    "message": "You are not allowed to access this resource.",
+                    "data": [],
+                }
+            )
+        # Make a copy of request.data and add the author field
+        comment_data = request.data.copy()
+        if comment_data["parent"] is not None:
+            parent = Comments.objects.filter(pk=comment_data["parent"])
+            if not parent:
+                return Response(
+                    {
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Comment Not Found!.",
+                        "data": [],
+                    }
+                )
+        post = Comments.objects.filter(pk=pk)
+        if not post:
+            return Response(
+                {
+                    "status": status.HTTP_404_NOT_FOUND,
+                    "message": "Post Not Found!.",
+                    "data": [],
+                }
+            )
+        comment_data["author"] = request.user.id
+        comment_data["post"] = pk
+
+        serializer = CommentSerializer(data=comment_data)
+        if serializer.is_valid():
+            serializer.save()
+        response = {
+            "data": serializer.data,
+            "message": "Successfully created Comment",
+            "status": status.HTTP_200_OK,
+        }
+    except Exception as e:
+        response = {
+            "data": [],
+            "message": f"An error occurred: {str(e)}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+    return Response(response, status=response["status"])
