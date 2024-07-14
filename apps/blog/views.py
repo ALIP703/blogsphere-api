@@ -312,3 +312,47 @@ def createComment(request, pk):
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
     return Response(response, status=response["status"])
+
+
+@api_view(["GET"])
+def saveAPost(request, pk):
+    try:
+        if not request.user.is_authenticated:
+            return Response(
+                {
+                    "status": status.HTTP_403_FORBIDDEN,
+                    "message": "You are not allowed to access this resource.",
+                    "data": [],
+                }
+            )
+        # Check if the post exists
+        post = Posts.objects.get(pk=pk)
+
+        # Check if the user has already liked the post
+        save = Saved.objects.filter(author=request.user, post=post).first()
+
+        if save:
+            # User has already liked the post, so remove the like
+            save.delete()
+            message = "Blog removed from saved successfully"
+        else:
+            # User has not liked the post, so add a new like
+            Saved.objects.create(author=request.user, post=post)
+            message = "Blog saved successfully"
+
+        response = {
+            "message": message,
+            "status": status.HTTP_200_OK,
+        }
+    except ObjectDoesNotExist:
+        response = {
+            "message": "Post not found",
+            "status": status.HTTP_404_NOT_FOUND,
+        }
+    except Exception as e:
+        response = {
+            "message": str(e),
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+    return Response(response, status=response["status"])
