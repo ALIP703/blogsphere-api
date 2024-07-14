@@ -1,0 +1,109 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+env/
+blogenv/
+
+# Install packages
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+lib/
+lib64/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg-info/
+*.eggs/
+*.tar.gz
+
+# Node modules
+node_modules/
+npm-debug.log
+
+# Django stuff:
+/media
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+.DS_Store
+*.swp
+.idea/
+.vscode/
+.sublime-project
+.sublime-workspace
+*.sublime-workspace
+*.sublime-project
+
+# Database
+*.db
+*.sqlite3
+
+# Local settings
+local_settings.py
+
+# env file
+*.env
+
+# ENV files
+.env
+.venv
+env.bak/
+venv.bak/
+
+# Docker files
+docker-compose*.yml
+Dockerfile
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+nosetests.xml
+coverage/
+*.cover
+.cache
+coverage/
+
+# Translations
+*.mo
+*.pot
+
+# VS Code files
+.vscode/
+
+# Pycharm files
+.idea/
+
+# MacOS files
+.DS_Store
+
+# Editor backups
+*~ 
+# Swap files
+*.swp
+# Temporary files
+*.tmp
