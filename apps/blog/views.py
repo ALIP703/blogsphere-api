@@ -185,6 +185,14 @@ def getAllReplyByCommentId(request, pk):
 @api_view(["GET"])
 def likeAPost(request, pk):
     try:
+        if not request.user.is_authenticated:
+            return Response(
+                {
+                    "status": status.HTTP_403_FORBIDDEN,
+                    "message": "You are not allowed to access this resource.",
+                    "data": [],
+                }
+            )
         # Check if the post exists
         post = Posts.objects.get(pk=pk)
 
@@ -207,6 +215,42 @@ def likeAPost(request, pk):
     except ObjectDoesNotExist:
         response = {
             "message": "Post not found",
+            "status": status.HTTP_404_NOT_FOUND,
+        }
+    except Exception as e:
+        response = {
+            "message": str(e),
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+    return Response(response, status=response["status"])
+
+
+@api_view(["GET"])
+def likeAComment(request, pk):
+    try:
+        # Check if the post exists
+        comment = Comments.objects.get(pk=pk)
+
+        # Check if the user has already liked the post
+        like = CommentLikes.objects.filter(author=request.user, comment=comment).first()
+
+        if like:
+            # User has already liked the post, so remove the like
+            like.delete()
+            message = "Comment disliked successfully"
+        else:
+            # User has not liked the post, so add a new like
+            CommentLikes.objects.create(author=request.user, comment=comment)
+            message = "Comment liked successfully"
+
+        response = {
+            "message": message,
+            "status": status.HTTP_200_OK,
+        }
+    except ObjectDoesNotExist:
+        response = {
+            "message": "Comment not found",
             "status": status.HTTP_404_NOT_FOUND,
         }
     except Exception as e:
