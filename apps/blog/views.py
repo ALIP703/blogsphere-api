@@ -67,16 +67,7 @@ def createBlog(request):
 def getABlog(request, pk):
     try:
         post = Posts.objects.get(pk=pk)
-
-        # Determine the display format of the post's creation date
-        today = timezone.now().date()
-        if post.created_at.date() == today:
-            created_at_display = "Today"
-        elif post.created_at.date() == today - timedelta(days=1):
-            created_at_display = "Yesterday"
-        else:
-            created_at_display = post.created_at
-
+        serializer = blogSerializer(post)
         # Check if the current user has liked or saved this post
         liked = (
             Likes.objects.filter(post=post, author=request.user).exists()
@@ -88,20 +79,13 @@ def getABlog(request, pk):
             if request.user.is_authenticated
             else False
         )
-        # Build the context
-        context = {
-            "id": post.id,
-            "title": post.title,
-            "content": post.content,
-            "created_at": created_at_display,
-            "user": request.user.username if request.user.is_authenticated else None,
-            "liked": liked,
-            "saved": saved,
-        }
-
+        # Create a copy of the serialized data and add the 'saved' and 'liked' fields
+        post_data = serializer.data.copy()
+        post_data["liked"] = liked
+        post_data["saved"] = saved
         # Create the response dictionary
         response = {
-            "data": context,
+            "data": post_data,
             "message": "successfully retrieved A blog post",
             "status": 200,
         }
