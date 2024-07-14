@@ -7,4 +7,5 @@ urlpatterns = [
     path("create-blog", views.createBlog),
     path("blog/<int:pk>/", views.getABlog),
     path("blog/<int:pk>/comments", views.getAllCommentsByPostId),
+    path("comments/<int:pk>/reply", views.getAllReplyByCommentId),
 ]

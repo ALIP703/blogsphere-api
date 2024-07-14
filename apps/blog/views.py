@@ -104,9 +104,7 @@ def getABlog(request, pk):
 @api_view(["GET"])
 def getAllCommentsByPostId(request, pk):
     try:
-        post = Posts.objects.get(pk=pk)
-
-        comments = Comments.objects.filter(post=post)
+        comments = Comments.objects.filter(post=pk, parent=None)
 
         if not comments.exists():
             response = {
@@ -126,7 +124,6 @@ def getAllCommentsByPostId(request, pk):
                 if request.user.is_authenticated
                 else False
             )
-            print(liked)
             comment["liked"] = liked
         # Create the response dictionary
         response = {
@@ -134,11 +131,44 @@ def getAllCommentsByPostId(request, pk):
             "message": "Successfully retrieved the comments",
             "status": 200,
         }
-    except Posts.DoesNotExist:
+    except Exception as e:
         response = {
             "data": None,
-            "message": "Post not found.",
-            "status": 404,
+            "message": f"An error occurred: {str(e)}",
+            "status": 500,
+        }
+
+    return Response(response)
+
+
+@api_view(["GET"])
+def getAllReplyByCommentId(request, pk):
+    try:
+        comments = Comments.objects.filter(parent=pk)
+        if not comments.exists():
+            response = {
+                "data": None,
+                "message": "No reply found for this comment.",
+                "status": 200,
+            }
+            return Response(response)
+
+        # Serialize the annotated comments
+        serializer = CommentSerializer(comments, many=True)
+        for comment in serializer.data:
+            liked = (
+                CommentLikes.objects.filter(
+                    comment=comment["id"], author=request.user
+                ).exists()
+                if request.user.is_authenticated
+                else False
+            )
+            comment["liked"] = liked
+        # Create the response dictionary
+        response = {
+            "data": serializer.data,
+            "message": "Successfully retrieved the reply comments",
+            "status": 200,
         }
     except Exception as e:
         response = {
