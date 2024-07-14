@@ -1,13 +1,14 @@
 from datetime import timedelta
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import IntegrityError
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import CommentLikes, Comments, Likes, Posts, Saved, User
+from .models import CommentLikes, Comments, Likes, Posts, Saved
 from .serializers import BlogSerializer, CommentSerializer
 
 
@@ -51,12 +52,25 @@ def createBlog(request):
 
         serializer = BlogSerializer(data=blog_data)
         if serializer.is_valid():
-            serializer.save()
-        response = {
-            "data": serializer.data,
-            "message": "Successfully created blog",
-            "status": status.HTTP_200_OK,
-        }
+            try:
+                serializer.save()
+                response = {
+                    "data": serializer.data,
+                    "message": "Successfully created blog",
+                    "status": status.HTTP_201_CREATED,
+                }
+            except IntegrityError as e:
+                response = {
+                    "data": [],
+                    "message": f"An error occurred: {str(e)}",
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                }
+        else:
+            response = {
+                "data": serializer.errors,
+                "message": "blog creation failed!",
+                "status": status.HTTP_400_BAD_REQUEST,
+            }
     except Exception as e:
         response = {
             "data": [],
@@ -300,11 +314,17 @@ def createComment(request, pk):
         serializer = CommentSerializer(data=comment_data)
         if serializer.is_valid():
             serializer.save()
-        response = {
-            "data": serializer.data,
-            "message": "Successfully created Comment",
-            "status": status.HTTP_200_OK,
-        }
+            response = {
+                "data": serializer.data,
+                "message": "Successfully created Comment",
+                "status": status.HTTP_201_CREATED,
+            }
+        else:
+            response = {
+                "data": serializer.errors,
+                "message": "Comment creation failed!",
+                "status": status.HTTP_400_BAD_REQUEST,
+            }
     except Exception as e:
         response = {
             "data": [],
