@@ -1,11 +1,12 @@
 from datetime import timedelta
 
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import CommentLikes, Comments, Likes, Posts, Saved, User
-from .serializers import blogSerializer
+from .serializers import BlogSerializer, CommentSerializer
 
 
 # Create your api views here.
@@ -13,7 +14,7 @@ from .serializers import blogSerializer
 def getAllBlogs(request):
     try:
         posts = Posts.objects.all()
-        serializer = blogSerializer(posts, many=True)
+        serializer = BlogSerializer(posts, many=True)
         response = {
             "data": serializer.data,
             "message": "successfully retrieved all blogs",
@@ -46,7 +47,7 @@ def createBlog(request):
         blog_data = request.data.copy()
         blog_data["author"] = request.user.id
 
-        serializer = blogSerializer(data=blog_data)
+        serializer = BlogSerializer(data=blog_data)
         if serializer.is_valid():
             serializer.save()
         response = {
@@ -67,7 +68,7 @@ def createBlog(request):
 def getABlog(request, pk):
     try:
         post = Posts.objects.get(pk=pk)
-        serializer = blogSerializer(post)
+        serializer = BlogSerializer(post)
         # Check if the current user has liked or saved this post
         liked = (
             Likes.objects.filter(post=post, author=request.user).exists()
@@ -90,6 +91,55 @@ def getABlog(request, pk):
             "status": 200,
         }
 
+    except Exception as e:
+        response = {
+            "data": None,
+            "message": f"An error occurred: {str(e)}",
+            "status": 500,
+        }
+
+    return Response(response)
+
+
+@api_view(["GET"])
+def getAllCommentsByPostId(request, pk):
+    try:
+        post = Posts.objects.get(pk=pk)
+
+        comments = Comments.objects.filter(post=post)
+
+        if not comments.exists():
+            response = {
+                "data": None,
+                "message": "No comments found for this post.",
+                "status": 200,
+            }
+            return Response(response)
+
+        # Serialize the annotated comments
+        serializer = CommentSerializer(comments, many=True)
+        for comment in serializer.data:
+            liked = (
+                CommentLikes.objects.filter(
+                    comment=comment["id"], author=request.user
+                ).exists()
+                if request.user.is_authenticated
+                else False
+            )
+            print(liked)
+            comment["liked"] = liked
+        # Create the response dictionary
+        response = {
+            "data": serializer.data,
+            "message": "Successfully retrieved the comments",
+            "status": 200,
+        }
+    except Posts.DoesNotExist:
+        response = {
+            "data": None,
+            "message": "Post not found.",
+            "status": 404,
+        }
     except Exception as e:
         response = {
             "data": None,
