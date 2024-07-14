@@ -1,7 +1,9 @@
 from datetime import timedelta
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -178,3 +180,39 @@ def getAllReplyByCommentId(request, pk):
         }
 
     return Response(response)
+
+
+@api_view(["GET"])
+def likeAPost(request, pk):
+    try:
+        # Check if the post exists
+        post = Posts.objects.get(pk=pk)
+
+        # Check if the user has already liked the post
+        like = Likes.objects.filter(author=request.user, post=post).first()
+
+        if like:
+            # User has already liked the post, so remove the like
+            like.delete()
+            message = "Blog disliked successfully"
+        else:
+            # User has not liked the post, so add a new like
+            Likes.objects.create(author=request.user, post=post)
+            message = "Blog liked successfully"
+
+        response = {
+            "message": message,
+            "status": status.HTTP_200_OK,
+        }
+    except ObjectDoesNotExist:
+        response = {
+            "message": "Post not found",
+            "status": status.HTTP_404_NOT_FOUND,
+        }
+    except Exception as e:
+        response = {
+            "message": str(e),
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+    return Response(response, status=response["status"])

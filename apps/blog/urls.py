@@ -8,4 +8,5 @@ urlpatterns = [
     path("blog/<int:pk>/", views.getABlog),
     path("blog/<int:pk>/comments", views.getAllCommentsByPostId),
     path("comments/<int:pk>/reply", views.getAllReplyByCommentId),
+    path("blog/<int:pk>/like", views.likeAPost),
 ]
