@@ -6,23 +6,43 @@ from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 from .models import CommentLikes, Comments, Likes, Posts, Saved
 from .serializers import BlogSerializer, CommentSerializer
 
 
+class CustomLimitOffsetPagination(LimitOffsetPagination):
+    default_limit = 10
+    max_limit = 100
+
+
 # Create your api views here.
 @api_view(["GET"])
 def getAllBlogs(request):
     try:
+        # Get all posts
         posts = Posts.objects.all()
-        serializer = BlogSerializer(posts, many=True)
+
+        # Create an instance of the pagination class
+        paginator = CustomLimitOffsetPagination()
+        # Paginate the queryset
+        paginated_posts = paginator.paginate_queryset(posts, request)
+
+        # Serialize the paginated queryset
+        serializer = BlogSerializer(paginated_posts, many=True)
+
+        # Create the response with pagination data
+        paginated_response = paginator.get_paginated_response(serializer.data)
+        data = paginated_response.data
+
         response = {
-            "data": serializer.data,
+            "data": data,
             "message": "Successfully retrieved all blogs",
             "status": status.HTTP_200_OK,
         }
+        return Response(response, status=response["status"])
 
     except Exception as e:
         response = {
@@ -30,22 +50,19 @@ def getAllBlogs(request):
             "message": f"An error occurred: {str(e)}",
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
-
-    # Return the JSON response with posts and their associated data
-    return Response(response, status=response["status"])
+        return Response(response, status=response["status"])
 
 
 @api_view(["POST"])
 def createBlog(request):
     try:
         if not request.user.is_authenticated:
-            return Response(
-                {
-                    "status": status.HTTP_403_FORBIDDEN,
-                    "message": "You are not allowed to access this resource.",
-                    "data": [],
-                }
-            )
+            response = {
+                "status": status.HTTP_403_FORBIDDEN,
+                "message": "You are not allowed to access this resource.",
+                "data": [],
+            }
+            return Response(response, status=response["status"])
         # Make a copy of request.data and add the author field
         blog_data = request.data.copy()
         blog_data["author"] = request.user.id
@@ -128,10 +145,15 @@ def getAllCommentsByPostId(request, pk):
                 "message": "No comments found for this post.",
                 "status": status.HTTP_404_NOT_FOUND,
             }
-            return Response(response)
+            return Response(response, status=response["status"])
 
-        # Serialize the annotated comments
-        serializer = CommentSerializer(comments, many=True)
+        # Create an instance of the pagination class
+        paginator = CustomLimitOffsetPagination()
+        # Paginate the queryset
+        paginated_posts = paginator.paginate_queryset(comments, request)
+
+        # Serialize the paginated queryset
+        serializer = CommentSerializer(paginated_posts, many=True)
         for comment in serializer.data:
             liked = (
                 CommentLikes.objects.filter(
@@ -141,9 +163,16 @@ def getAllCommentsByPostId(request, pk):
                 else False
             )
             comment["liked"] = liked
+        # Create the response with pagination data
+        paginated_response = paginator.get_paginated_response(serializer.data)
+        data = paginated_response.data
+
+        # Serialize the annotated comments
+        # serializer = CommentSerializer(comments, many=True)
+
         # Create the response dictionary
         response = {
-            "data": serializer.data,
+            "data": data,
             "message": "Successfully retrieved the comments",
             "status": status.HTTP_200_OK,
         }
@@ -160,6 +189,13 @@ def getAllCommentsByPostId(request, pk):
 @api_view(["GET"])
 def getAllReplyByCommentId(request, pk):
     try:
+        if not request.user.is_authenticated:
+            response = {
+                "status": status.HTTP_403_FORBIDDEN,
+                "message": "You are not allowed to access this resource.",
+                "data": [],
+            }
+            return Response(response, status=response["status"])
         comments = Comments.objects.filter(parent=pk)
         if not comments.exists():
             response = {
@@ -167,7 +203,7 @@ def getAllReplyByCommentId(request, pk):
                 "message": "No reply found for this comment.",
                 "status": status.HTTP_404_NOT_FOUND,
             }
-            return Response(response)
+            return Response(response, status=response["status"])
 
         # Serialize the annotated comments
         serializer = CommentSerializer(comments, many=True)
@@ -200,13 +236,12 @@ def getAllReplyByCommentId(request, pk):
 def likeAPost(request, pk):
     try:
         if not request.user.is_authenticated:
-            return Response(
-                {
-                    "status": status.HTTP_403_FORBIDDEN,
-                    "message": "You are not allowed to access this resource.",
-                    "data": [],
-                }
-            )
+            response = {
+                "status": status.HTTP_403_FORBIDDEN,
+                "message": "You are not allowed to access this resource.",
+                "data": [],
+            }
+            return Response(response, status=response["status"])
         # Check if the post exists
         post = Posts.objects.get(pk=pk)
 
@@ -243,6 +278,13 @@ def likeAPost(request, pk):
 @api_view(["GET"])
 def likeAComment(request, pk):
     try:
+        if not request.user.is_authenticated:
+            response = {
+                "status": status.HTTP_403_FORBIDDEN,
+                "message": "You are not allowed to access this resource.",
+                "data": [],
+            }
+            return Response(response, status=response["status"])
         # Check if the post exists
         comment = Comments.objects.get(pk=pk)
 
@@ -280,34 +322,31 @@ def likeAComment(request, pk):
 def createComment(request, pk):
     try:
         if not request.user.is_authenticated:
-            return Response(
-                {
-                    "status": status.HTTP_403_FORBIDDEN,
-                    "message": "You are not allowed to access this resource.",
-                    "data": [],
-                }
-            )
+            response = {
+                "status": status.HTTP_403_FORBIDDEN,
+                "message": "You are not allowed to access this resource.",
+                "data": [],
+            }
+            return Response(response, status=response["status"])
         # Make a copy of request.data and add the author field
         comment_data = request.data.copy()
         if comment_data["parent"] is not None:
             parent = Comments.objects.filter(pk=comment_data["parent"])
             if not parent:
-                return Response(
-                    {
-                        "status": status.HTTP_404_NOT_FOUND,
-                        "message": "Comment Not Found!.",
-                        "data": [],
-                    }
-                )
-        post = Comments.objects.filter(pk=pk)
-        if not post:
-            return Response(
-                {
+                response = {
                     "status": status.HTTP_404_NOT_FOUND,
-                    "message": "Post Not Found!.",
+                    "message": "Comment Not Found!.",
                     "data": [],
                 }
-            )
+                return Response(response, status=response["status"])
+        post = Comments.objects.filter(pk=pk)
+        if not post:
+            response = {
+                "status": status.HTTP_404_NOT_FOUND,
+                "message": "Post Not Found!.",
+                "data": [],
+            }
+            return Response(response, status=response["status"])
         comment_data["author"] = request.user.id
         comment_data["post"] = pk
 
@@ -338,13 +377,13 @@ def createComment(request, pk):
 def saveAPost(request, pk):
     try:
         if not request.user.is_authenticated:
-            return Response(
-                {
-                    "status": status.HTTP_403_FORBIDDEN,
-                    "message": "You are not allowed to access this resource.",
-                    "data": [],
-                }
-            )
+            print("test")
+            response = {
+                "status": status.HTTP_403_FORBIDDEN,
+                "message": "You are not allowed to access this resource.",
+                "data": [],
+            }
+            return Response(response, status=response["status"])
         # Check if the post exists
         post = Posts.objects.get(pk=pk)
 
