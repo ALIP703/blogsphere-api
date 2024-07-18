@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.hashers import make_password
 from django.db import IntegrityError
@@ -7,9 +5,23 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+# Create your views here.
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+
 from .serializers import UserSerializer
 
-# Create your views here.
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["username"] = user.username
+        return token
+
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
 
 
 @api_view(["GET"])
@@ -107,3 +119,23 @@ def signUp(request):
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
     return Response(response, status=response["status"])
+
+
+@api_view(["GET"])
+def isAuthenticated(request):
+    if not request.user.is_authenticated:
+        return Response(
+            {
+                "status": status.HTTP_401_UNAUTHORIZED,
+                "message": "You are not authenticated.",
+                "data": [],
+            }
+        )
+    else:
+        return Response(
+            {
+                "status": status.HTTP_200_OK,
+                "message": "You are authenticated.",
+                "data": [],
+            }
+        )
