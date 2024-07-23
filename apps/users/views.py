@@ -19,7 +19,9 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Add custom claims
         token["username"] = user.username
         token["email"] = user.email
-        token["userid"] = user.id
+        token["userId"] = user.id
+        if hasattr(user, "profile"):
+            token["image"] = user.profile.image.url  # Assuming `image` is an ImageField
         return token
 
     def validate(self, attrs):
@@ -27,7 +29,11 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Add additional data to the response
         data["username"] = self.user.username
         data["email"] = self.user.email
-        data["userid"] = self.user.id
+        data["userId"] = self.user.id
+        if hasattr(self.user, "profile"):
+            data["image"] = (
+                self.user.profile.image.url
+            )  # Assuming `image` is an ImageField
         return data
 
 
