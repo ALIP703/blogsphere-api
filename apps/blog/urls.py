@@ -4,7 +4,9 @@ from . import views
 
 urlpatterns = [
     path("", views.getAllBlogs),
-    path("create-blog", views.createBlog),
+    path("tags", views.getAllTags),
+    path("create-blog", views.CreateBlogView.as_view()),
+    path("media/upload", views.FileUploadView.as_view(), name="file-upload"),
     path("blog/<int:pk>/", views.getABlog),
     path("blog/<int:pk>/comments", views.getAllCommentsByPostId),
     path("comment/<int:pk>/reply", views.getAllReplyByCommentId),

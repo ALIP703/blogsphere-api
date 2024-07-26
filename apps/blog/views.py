@@ -8,9 +8,15 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .models import CommentLikes, Comments, Likes, Posts, Saved
-from .serializers import BlogSerializer, CommentSerializer
+from .models import CommentLikes, Comments, Likes, Posts, Saved, Tags, UploadedFile
+from .serializers import (
+    BlogSerializer,
+    CommentSerializer,
+    TagSerializer,
+    UploadedFileSerializer,
+)
 
 
 class CustomLimitOffsetPagination(LimitOffsetPagination):
@@ -53,48 +59,78 @@ def getAllBlogs(request):
         return Response(response, status=response["status"])
 
 
-@api_view(["POST"])
-def createBlog(request):
-    try:
-        if not request.user.is_authenticated:
-            response = {
-                "status": status.HTTP_403_FORBIDDEN,
-                "message": "You are not allowed to access this resource.",
-                "data": [],
-            }
-            return Response(response, status=response["status"])
-        # Make a copy of request.data and add the author field
-        blog_data = request.data.copy()
-        blog_data["author"] = request.user.id
+class FileUploadView(APIView):
+    serializer_class = UploadedFileSerializer
 
-        serializer = BlogSerializer(data=blog_data)
+    def post(self, request):
+        if "file" not in request.FILES:
+            return Response(
+                {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        file = request.FILES["file"]
+
+        # Save the file URL to the database if using a model
+        # uploaded_file = UploadedFile.objects.create(data=file)
+
+        # Serialize and return the response
+        serializer = self.serializer_class(data={"file": file})
         if serializer.is_valid():
-            try:
-                serializer.save()
+            # Uncomment if you are saving the file with a model
+            # uploaded_file = serializer.save()
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# @api_view(["POST"])
+# def createBlog(request):
+class CreateBlogView(APIView):
+    serializer_class = BlogSerializer
+
+    def post(self, request):
+        try:
+            if not request.user.is_authenticated:
                 response = {
-                    "data": serializer.data,
-                    "message": "Successfully created blog",
-                    "status": status.HTTP_201_CREATED,
-                }
-            except IntegrityError as e:
-                response = {
+                    "status": status.HTTP_403_FORBIDDEN,
+                    "message": "You are not allowed to access this resource.",
                     "data": [],
-                    "message": f"An error occurred: {str(e)}",
-                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 }
-        else:
+                return Response(response, status=response["status"])
+            # Make a copy of request.data and add the author field
+            blog_data = request.data.copy()
+            blog_data["author"] = request.user.id
+            serializer_class = BlogSerializer
+            serializer = serializer_class(data=blog_data)
+            if serializer.is_valid():
+                try:
+                    serializer.save()
+                    response = {
+                        "data": serializer.data,
+                        "message": "Successfully created blog",
+                        "status": status.HTTP_201_CREATED,
+                    }
+                except IntegrityError as e:
+                    response = {
+                        "data": [],
+                        "message": f"An error occurred: {str(e)}",
+                        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    }
+            else:
+                print(serializer.errors)
+                response = {
+                    "data": serializer.errors,
+                    "message": "blog creation failed!",
+                    "status": status.HTTP_400_BAD_REQUEST,
+                }
+        except Exception as e:
             response = {
-                "data": serializer.errors,
-                "message": "blog creation failed!",
-                "status": status.HTTP_400_BAD_REQUEST,
+                "data": [],
+                "message": f"An error occurred: {str(e)}",
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
-    except Exception as e:
-        response = {
-            "data": [],
-            "message": f"An error occurred: {str(e)}",
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
-    return Response(response, status=response["status"])
+        return Response(response, status=response["status"])
 
 
 @api_view(["GET"])
@@ -415,3 +451,36 @@ def saveAPost(request, pk):
         }
 
     return Response(response, status=response["status"])
+
+
+@api_view(["GET"])
+def getAllTags(request):
+    try:
+        tags = Tags.objects.all()
+
+        # Create an instance of the pagination class
+        paginator = CustomLimitOffsetPagination()
+        # Paginate the queryset
+        paginated_tags = paginator.paginate_queryset(tags, request)
+
+        # Serialize the paginated queryset
+        serializer = TagSerializer(paginated_tags, many=True)
+
+        # Create the response with pagination data
+        paginated_response = paginator.get_paginated_response(serializer.data)
+        data = paginated_response.data
+        print(data)
+        response = {
+            "data": data,
+            "message": "Successfully retrieved all Tags",
+            "status": status.HTTP_200_OK,
+        }
+        return Response(response, status=response["status"])
+
+    except Exception as e:
+        response = {
+            "data": [],
+            "message": f"An error occurred: {str(e)}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+        return Response(response, status=response["status"])
