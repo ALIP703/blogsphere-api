@@ -23,7 +23,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("apps.blog.urls")),
     path("user/", include("apps.users.urls")),
-    path("ckeditor/", include("ckeditor_uploader.urls")),
     path(
         "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
     ),
