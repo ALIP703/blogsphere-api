@@ -83,23 +83,16 @@ def signIn(request):
 @api_view(["POST"])
 def signUp(request):
     try:
-        # Ensure the user is not authenticated
-        print(request.user)
-
-        if not request.user.is_authenticated:
-            return Response(
-                {
-                    "status": status.HTTP_403_FORBIDDEN,
-                    "message": "You are not allowed to access this resource.",
-                    "data": [],
-                }
-            )
-        # Make a copy of request.data and add the author field
         user_data = request.data.copy()
-
+        if user_data["password"] != user_data["confirmPassword"]:
+            response = {
+                "data": None,
+                "message": "Confirm Password is not same!",
+                "status": status.HTTP_400_BAD_REQUEST,
+            }
+            return Response(response, status=response["status"])
         # Hash the password before saving
         user_data["password"] = make_password(user_data.get("password"))
-
         serializer = UserSerializer(data=user_data)
         if serializer.is_valid():
             try:
@@ -110,25 +103,28 @@ def signUp(request):
                     "status": status.HTTP_201_CREATED,
                 }
             except IntegrityError as e:
-                # Handle unique constraint violations
-                if "UNIQUE constraint" in str(e):
-                    response = {
-                        "data": [],
-                        "message": "Username already exists.",
-                        "status": status.HTTP_400_BAD_REQUEST,
-                    }
-                else:
-                    response = {
-                        "data": [],
-                        "message": f"An error occurred: {str(e)}",
-                        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    }
+                response = {
+                    "data": [],
+                    "message": f"An error occurred: {str(e)}",
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                }
         else:
+            # Check for unique constraint errors
+            errors = serializer.errors
+            if "username" in errors:
+                response = {
+                    "data": None,
+                    "message": "A user with that username already exists!",
+                    "status": status.HTTP_400_BAD_REQUEST,
+                }
+                return Response(response, status=response["status"])
+            print(errors)
             response = {
-                "data": serializer.errors,
+                "data": errors,
                 "message": "User creation failed!",
                 "status": status.HTTP_400_BAD_REQUEST,
             }
+
     except Exception as e:
         response = {
             "data": [],
