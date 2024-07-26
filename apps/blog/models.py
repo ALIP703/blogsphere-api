@@ -1,4 +1,3 @@
-from ckeditor_uploader.fields import RichTextUploadingField
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -13,17 +12,23 @@ from django.db import models
 
 
 class Tags(models.Model):
-    name = models.CharField(max_length=250)
+    value = models.CharField(max_length=250)
+    label = models.CharField(max_length=250, null=True, blank=True)
 
     def __str__(self):
-        return self.name
+        return self.label
+
+
+class UploadedFile(models.Model):
+    file = models.FileField(upload_to="uploads/%Y/%m/%d/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
 
 class Posts(models.Model):
     title = models.CharField(max_length=250)
     subtitle = models.CharField(max_length=250, null=True, blank=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts")
-    content = RichTextUploadingField()  # CKEditor field
+    content = models.TextField()
     tags = models.ManyToManyField(Tags, related_name="posts")
     thumbnail = models.ImageField(upload_to="uploads/%Y/%m/%d/", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
