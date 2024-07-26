@@ -43,28 +43,11 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
-    "ckeditor",
-    "ckeditor_uploader",
     "apps.blog",
     "apps.users",
 ]
 
 
-# CKEditor configuration
-CKEDITOR_UPLOAD_PATH = "uploads/"
-CKEDITOR_CONFIGS = {
-    "default": {
-        "toolbar": "full",
-        "height": 500,
-        "width": "100%",
-        "extraPlugins": ",".join(
-            [
-                "uploadimage",  # Enables image upload
-                # Add additional plugins if needed
-            ]
-        ),
-    },
-}
 # jwt
 
 REST_FRAMEWORK = {
