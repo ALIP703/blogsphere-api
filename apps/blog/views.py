@@ -285,7 +285,8 @@ def getAllReplyByCommentId(request, pk):
                 "data": [],
             }
             return Response(response, status=response["status"])
-        comments = Comments.objects.filter(parent=pk)
+        comments = Comments.objects.filter(parent=pk).order_by("-created_at")
+
         if not comments.exists():
             response = {
                 "data": None,
@@ -294,8 +295,13 @@ def getAllReplyByCommentId(request, pk):
             }
             return Response(response, status=response["status"])
 
-        # Serialize the annotated comments
-        serializer = CommentSerializer(comments, many=True)
+        # Create an instance of the pagination class
+        paginator = CustomLimitOffsetPagination()
+        # Paginate the queryset
+        paginated_posts = paginator.paginate_queryset(comments, request)
+
+        # Serialize the paginated queryset
+        serializer = CommentSerializer(paginated_posts, many=True)
         for comment in serializer.data:
             liked = (
                 CommentLikes.objects.filter(
@@ -304,10 +310,17 @@ def getAllReplyByCommentId(request, pk):
                 if request.user.is_authenticated
                 else False
             )
+            likesCount = CommentLikes.objects.filter(comment=comment["id"]).count()
+            commentCount = Comments.objects.filter(parent=comment["id"]).count()
             comment["liked"] = liked
-        # Create the response dictionary
+            comment["likesCount"] = likesCount
+            comment["commentCount"] = commentCount
+            comment["created_at"] = format_date_time(comment["created_at"])
+        # Create the response with pagination data
+        paginated_response = paginator.get_paginated_response(serializer.data)
+        data = paginated_response.data
         response = {
-            "data": serializer.data,
+            "data": data,
             "message": "Successfully retrieved the reply comments",
             "status": status.HTTP_200_OK,
         }
