@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 
 import pytz
@@ -14,7 +15,9 @@ from rest_framework.views import APIView
 
 from .models import CommentLikes, Comments, Likes, Posts, Saved, Tags, UploadedFile
 from .serializers import (
+    BlogCreateSerializer,
     BlogSerializer,
+    CommentCreateSerializer,
     CommentSerializer,
     TagSerializer,
     UploadedFileSerializer,
@@ -166,7 +169,6 @@ class CreateBlogView(APIView):
                 message = "blog creation failed!"
                 if serializer.errors["thumbnail"]:
                     message = serializer.errors["thumbnail"][0]
-                    print(serializer.errors["thumbnail"][0])
                 response = {
                     "data": serializer.errors,
                     "message": message,
@@ -432,6 +434,8 @@ def createComment(request, pk):
             return Response(response, status=response["status"])
         # Make a copy of request.data and add the author field
         comment_data = request.data.copy()
+        if not comment_data.get("parent"):
+            comment_data["parent"] = None
         if comment_data["parent"] is not None:
             parent = Comments.objects.filter(pk=comment_data["parent"])
             if not parent:
@@ -441,6 +445,7 @@ def createComment(request, pk):
                     "data": [],
                 }
                 return Response(response, status=response["status"])
+
         post = Comments.objects.filter(pk=pk)
         if not post:
             response = {
@@ -451,8 +456,7 @@ def createComment(request, pk):
             return Response(response, status=response["status"])
         comment_data["author"] = request.user.id
         comment_data["post"] = pk
-
-        serializer = CommentSerializer(data=comment_data)
+        serializer = CommentCreateSerializer(data=comment_data)
         if serializer.is_valid():
             serializer.save()
             response = {
@@ -479,7 +483,6 @@ def createComment(request, pk):
 def saveAPost(request, pk):
     try:
         if not request.user.is_authenticated:
-            print("test")
             response = {
                 "status": status.HTTP_403_FORBIDDEN,
                 "message": "You are not allowed to access this resource.",
@@ -535,7 +538,6 @@ def getAllTags(request):
         # Create the response with pagination data
         paginated_response = paginator.get_paginated_response(serializer.data)
         data = paginated_response.data
-        print(data)
         response = {
             "data": data,
             "message": "Successfully retrieved all Tags",
