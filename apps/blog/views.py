@@ -197,10 +197,14 @@ def getABlog(request, pk):
             if request.user.is_authenticated
             else False
         )
+        likesCount = Likes.objects.filter(post=post).count()
+        commentCount = Comments.objects.filter(post=post, parent=None).count()
         # Create a copy of the serialized data and add the 'saved' and 'liked' fields
         post_data = serializer.data.copy()
         post_data["liked"] = liked
         post_data["saved"] = saved
+        post_data["likesCount"] = likesCount
+        post_data["commentCount"] = commentCount
         # Create the response dictionary
         response = {
             "data": post_data,
