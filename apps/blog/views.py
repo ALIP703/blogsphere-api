@@ -1,5 +1,7 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
+import pytz
+from dateutil import parser
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 from django.db.models import Exists, OuterRef
@@ -22,6 +24,26 @@ from .serializers import (
 class CustomLimitOffsetPagination(LimitOffsetPagination):
     default_limit = 10
     max_limit = 100
+
+
+def format_date_time(date_time_str):
+    # Define the IST timezone
+    ist = pytz.timezone("Asia/Kolkata")
+
+    # Parse the created_at string to a datetime object and convert to IST
+    date_time = parser.parse(date_time_str)
+    date_time_ist = date_time.astimezone(ist)
+
+    # Get today's date in IST
+    today_ist = datetime.now(ist).date()
+
+    # Check if created_at is today
+    if date_time_ist.date() == today_ist:
+        # Format to show only time if the date is today
+        return date_time_ist.strftime("%I:%M %p")
+    else:
+        # Format to show full date if the date is not today
+        return date_time_ist.strftime("%B %d, %Y")
 
 
 # Create your api views here.
