@@ -225,8 +225,7 @@ def getABlog(request, pk):
 @api_view(["GET"])
 def getAllCommentsByPostId(request, pk):
     try:
-        comments = Comments.objects.filter(post=pk, parent=None)
-
+        comments = Comments.objects.filter(post=pk, parent=None).order_by("-created_at")
         if not comments.exists():
             response = {
                 "data": None,
@@ -250,13 +249,15 @@ def getAllCommentsByPostId(request, pk):
                 if request.user.is_authenticated
                 else False
             )
+            commentCount = Comments.objects.filter(parent=comment["id"]).count()
+            likesCount = CommentLikes.objects.filter(comment=comment["id"]).count()
             comment["liked"] = liked
+            comment["likesCount"] = likesCount
+            comment["commentCount"] = commentCount
+            comment["created_at"] = format_date_time(comment["created_at"])
         # Create the response with pagination data
         paginated_response = paginator.get_paginated_response(serializer.data)
         data = paginated_response.data
-
-        # Serialize the annotated comments
-        # serializer = CommentSerializer(comments, many=True)
 
         # Create the response dictionary
         response = {
