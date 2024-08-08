@@ -122,8 +122,31 @@ class CreateBlogView(APIView):
                 return Response(response, status=response["status"])
             # Make a copy of request.data and add the author field
             blog_data = request.data.copy()
+            content = json.loads(blog_data["content"])
+            title = None
+            subtitle = None
+
+            # Flag to indicate if the first heading has been found
+            found_first_heading = False
+
+            # Iterate through the list to find the first heading and next heading or paragraph
+            for item in content:
+                if not found_first_heading:
+                    if item.get("type") == "heading":
+                        # Extract text from the first heading
+                        if item.get("content"):
+                            title = item["content"][0].get("text")
+                        found_first_heading = True
+                else:
+                    # After finding the first heading, look for the next heading or paragraph
+                    if item.get("type") in ["heading", "paragraph"]:
+                        if item.get("content"):
+                            subtitle = item["content"][0].get("text")
+                        break
+            blog_data["title"] = title
+            blog_data["subtitle"] = subtitle
             blog_data["author"] = request.user.id
-            serializer_class = BlogSerializer
+            serializer_class = BlogCreateSerializer
             serializer = serializer_class(data=blog_data)
             if serializer.is_valid():
                 try:
@@ -140,10 +163,13 @@ class CreateBlogView(APIView):
                         "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
                     }
             else:
-                print(serializer.errors)
+                message = "blog creation failed!"
+                if serializer.errors["thumbnail"]:
+                    message = serializer.errors["thumbnail"][0]
+                    print(serializer.errors["thumbnail"][0])
                 response = {
                     "data": serializer.errors,
-                    "message": "blog creation failed!",
+                    "message": message,
                     "status": status.HTTP_400_BAD_REQUEST,
                 }
         except Exception as e:
