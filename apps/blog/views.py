@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 
 import pytz
 from dateutil import parser
+from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
-from django.db.models import Exists, OuterRef
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -13,7 +14,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import CommentLikes, Comments, Likes, Posts, Saved, Tags, UploadedFile
+from .models import CommentLikes, Comments, Followings, Likes, Posts, Saved, Tags
 from .serializers import (
     BlogCreateSerializer,
     BlogSerializer,
@@ -21,6 +22,7 @@ from .serializers import (
     CommentSerializer,
     TagSerializer,
     UploadedFileSerializer,
+    UserSerializer,
 )
 
 
@@ -624,3 +626,111 @@ def getAUserProfile(request, username):
     return Response(response, status=response["status"])
 
 
+@api_view(["GET"])
+def getSuggestionUserList(request, pk):
+    try:
+        # Get the IDs of the users that the given user is following
+        following_ids = Followings.objects.filter(follower_id=pk).values_list(
+            "following_id", flat=True
+        )
+        # Get the IDs of users who are followed by those users (second-degree connections)
+        followings_of_following_ids = (
+            Followings.objects.filter(follower_id__in=following_ids)
+            .values("following_id")
+            .annotate(common_follow_count=Count("following_id"))
+            .order_by("-common_follow_count")  # Sort in descending order
+        )
+        # Extract the IDs and order by the number of common followings
+        ordered_following_ids = [
+            entry["following_id"] for entry in followings_of_following_ids
+        ]
+
+        # Create a Case/When expression to maintain the order
+        preserved_order = Case(
+            *[
+                When(id=pk, then=Value(pos))
+                for pos, pk in enumerate(ordered_following_ids)
+            ],
+            output_field=IntegerField(),
+        )
+
+        # Exclude the original user and already-followed users to suggest new users, ordered by common_follow_count
+        suggested_users = (
+            User.objects.filter(id__in=ordered_following_ids)
+            .exclude(Q(id=pk) | Q(id__in=following_ids))
+            .order_by(preserved_order)
+        )
+        # Create an instance of the pagination class
+        paginator = CustomLimitOffsetPagination()
+        # Paginate the queryset
+        paginated_Users = paginator.paginate_queryset(suggested_users, request)
+
+        # Serialize the list of suggested users
+        serializer = UserSerializer(paginated_Users, many=True)
+        # Create the response with pagination data
+        paginated_response = paginator.get_paginated_response(serializer.data)
+        data = paginated_response.data
+
+        response = {
+            "data": data,
+            "message": "Successfully retrieved A Suggested profile",
+            "status": status.HTTP_200_OK,
+        }
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        response = {
+            "data": None,
+            "message": f"An error occurred: {str(e)}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+    return Response(response, status=response["status"])
+
+
+@api_view(["GET"])
+def getFamousAuthors(request):
+    try:
+        # Query to get following_id, annotated with the count of how many times they appear
+        ids = (
+            Followings.objects.values("following_id")
+            .annotate(follow_count=Count("following_id"))
+            .order_by("-follow_count")
+        )
+
+        # Extract the list of following_id values and their counts
+        following_ids = [entry["following_id"] for entry in ids]
+        follow_counts = {entry["following_id"]: entry["follow_count"] for entry in ids}
+
+        # Get the User objects based on the following_ids
+        famous_authors = User.objects.filter(id__in=following_ids)
+
+        # Order the users by their follow_count
+        famous_authors = sorted(
+            famous_authors, key=lambda user: follow_counts.get(user.id, 0), reverse=True
+        )
+
+        # Create an instance of the pagination class
+        paginator = CustomLimitOffsetPagination()
+        # Paginate the sorted queryset
+        paginated_Users = paginator.paginate_queryset(famous_authors, request)
+
+        # Serialize the list of paginated users
+        serializer = UserSerializer(paginated_Users, many=True)
+        # Create the response with pagination data
+        paginated_response = paginator.get_paginated_response(serializer.data)
+        data = paginated_response.data
+
+        response = {
+            "data": data,
+            "message": "Successfully retrieved Famous profiles",
+            "status": status.HTTP_200_OK,
+        }
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        response = {
+            "data": None,
+            "message": f"An error occurred: {str(e)}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+    return Response(response, status=response["status"])

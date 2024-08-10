@@ -10,10 +10,12 @@ urlpatterns = [
     path("blog/<int:pk>/", views.getABlog),
     path("blogs/profile/<int:pk>/", views.getAllBlogsByUserId),
     path("profile/<str:username>/", views.getAUserProfile),
+    path("profile/<int:pk>/suggestion", views.getSuggestionUserList),
     path("blog/<int:pk>/comments", views.getAllCommentsByPostId),
     path("comment/<int:pk>/reply", views.getAllReplyByCommentId),
     path("blog/<int:pk>/like", views.likeAPost),
     path("blog/<int:pk>/save", views.saveAPost),
     path("comment/<int:pk>/like", views.likeAComment),
     path("blog/<int:pk>/create-comment", views.createComment),
+    path("popular-authors", views.getFamousAuthors),
 ]
