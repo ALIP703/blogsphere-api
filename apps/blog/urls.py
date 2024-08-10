@@ -8,6 +8,8 @@ urlpatterns = [
     path("create-blog", views.CreateBlogView.as_view()),
     path("media/upload", views.FileUploadView.as_view(), name="file-upload"),
     path("blog/<int:pk>/", views.getABlog),
+    path("blogs/profile/<int:pk>/", views.getAllBlogsByUserId),
+    path("profile/<str:username>/", views.getAUserProfile),
     path("blog/<int:pk>/comments", views.getAllCommentsByPostId),
     path("comment/<int:pk>/reply", views.getAllReplyByCommentId),
     path("blog/<int:pk>/like", views.likeAPost),

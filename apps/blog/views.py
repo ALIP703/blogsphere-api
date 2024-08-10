@@ -84,6 +84,41 @@ def getAllBlogs(request):
         return Response(response, status=response["status"])
 
 
+@api_view(["GET"])
+def getAllBlogsByUserId(request, pk):
+    try:
+        user = User.objects.get(pk=pk)
+        # Get all posts of this user
+        posts = Posts.objects.filter(author=user)
+
+        # Create an instance of the pagination class
+        paginator = CustomLimitOffsetPagination()
+        # Paginate the queryset
+        paginated_posts = paginator.paginate_queryset(posts, request)
+
+        # Serialize the paginated queryset
+        serializer = BlogSerializer(paginated_posts, many=True)
+
+        # Create the response with pagination data
+        paginated_response = paginator.get_paginated_response(serializer.data)
+        data = paginated_response.data
+
+        response = {
+            "data": data,
+            "message": "Successfully retrieved all blogs",
+            "status": status.HTTP_200_OK,
+        }
+        return Response(response, status=response["status"])
+
+    except Exception as e:
+        response = {
+            "data": [],
+            "message": f"An error occurred: {str(e)}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+        return Response(response, status=response["status"])
+
+
 class FileUploadView(APIView):
     serializer_class = UploadedFileSerializer
 
@@ -552,3 +587,40 @@ def getAllTags(request):
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
         }
         return Response(response, status=response["status"])
+
+
+@api_view(["GET"])
+def getAUserProfile(request, username):
+    try:
+        if not request.user.is_authenticated:
+            response = {
+                "status": status.HTTP_403_FORBIDDEN,
+                "message": "You are not allowed to access this resource.",
+                "data": [],
+            }
+            return Response(response, status=response["status"])
+        user = User.objects.get(username=username)
+        serializer = UserSerializer(user)
+        followingCount = Followings.objects.filter(follower=user).count()
+        followerCount = Followings.objects.filter(following=user).count()
+        postCount = Posts.objects.filter(author=user).count()
+        user_data = serializer.data.copy()
+        user_data["followingCount"] = followingCount
+        user_data["followerCount"] = followerCount
+        user_data["postCount"] = postCount
+        # Create the response dictionary
+        response = {
+            "data": user_data,
+            "message": "Successfully retrieved A user profile",
+            "status": status.HTTP_200_OK,
+        }
+    except Exception as e:
+        response = {
+            "data": None,
+            "message": f"An error occurred: {str(e)}",
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+
+    return Response(response, status=response["status"])
+
+
